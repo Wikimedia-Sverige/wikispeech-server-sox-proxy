@@ -1,0 +1,29 @@
+version: v4
+
+base: docker-registry.wikimedia.org/wikimedia-buster
+
+runs:
+  insecurely: true
+
+lives:
+  in: /srv/sox-proxy
+
+variants:
+  build:
+    apt:
+      packages: [ python3-setuptools, ca-certificates, opus-tools, sox ]
+    python:
+        version: python3
+        requirements: [ requirements.txt ]
+    copies:
+      - from: local
+        source: .
+        destination: .
+  production:
+    includes: [ build ]
+    entrypoint: [ ./blubber-entrypoint.sh ]
+  test:
+    includes: [ build ]
+    apt:
+      packages: [ wget ]
+    entrypoint: [ ./blubber-entrypoint-test.sh ]
