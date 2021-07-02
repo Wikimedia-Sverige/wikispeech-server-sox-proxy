@@ -80,4 +80,4 @@ def read_file( directory, filename ):
         return file.read()
 
 if __name__ == '__main__':
-    api.run()
+    api.run(host='0.0.0.0')
