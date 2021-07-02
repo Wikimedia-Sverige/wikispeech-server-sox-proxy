@@ -12,12 +12,11 @@ api = Flask(__name__)
 def ping():
     return json.dumps( 'pong' )
 
-@api.route('/', methods=['GET'])
+@api.route('/', methods=['GET', 'POST'])
 def get():
-    lang = request.args.get( 'lang' )
-    input = request.args.get( 'input' )
     speechoid_url = request.args.get( 'speechoidUrl', os.getenv( 'SPEECHOID_URL', 'http://wikispeech-server:10001/' ) )
-    PARAMS = { 'lang': lang, 'input': input }
+    PARAMS = dict( request.args )
+    PARAMS.pop('speechoidUrl', None)
     r = requests.get( url = speechoid_url, params = PARAMS )
     data = json.loads( r.text )
     data['audio_data'] = post_process_audio( data['audio_data'], [
