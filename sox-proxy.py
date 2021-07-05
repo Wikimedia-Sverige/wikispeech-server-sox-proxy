@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, Response
 import json
 import requests
 import base64
@@ -14,18 +14,20 @@ def ping():
 
 @api.route('/', methods=['GET', 'POST'])
 def get():
-    speechoid_url = request.args.get('speechoidUrl', os.getenv('SPEECHOID_URL', 'http://wikispeech-server:10001/'))
-    PARAMS = dict(request.args)
-    PARAMS.pop('speechoidUrl', None)
-    r = requests.get(url = speechoid_url, params = PARAMS)
-    data = json.loads(r.text)
+    speechoid_url = request.values.get('speechoidUrl', os.getenv('SPEECHOID_URL', 'http://wikispeech-server:10001/'))
+    params = dict(request.values)
+    print('Incoming request with parameters ' + json.dumps(params))
+    params.pop('speechoidUrl', None)
+    response = requests.get(url = speechoid_url, params = params)
+    data = json.loads(response.text)
     data['audio_data'] = post_process_audio(data['audio_data'], [
         # Compressor with low threshold, low attack, high ratio to normalize all audio, including potential click.
         'compand 0.02,0.20 5:-60,-40,-10 -5 -90 0.1',
         # 50 ms long logarithmic fade-in to remove potential click.
         'fade 0.05'
     ])
-    return json.dumps(data)
+    return Response(json.dumps(data), 'application/json')
+
 
 def post_process_audio(input_base64_opus_audio, command_chain):
     # create temporary directory
