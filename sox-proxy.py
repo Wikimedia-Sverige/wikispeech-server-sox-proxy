@@ -26,7 +26,7 @@ def get():
         # 50 ms long logarithmic fade-in to remove potential click.
         'fade 0.05'
     ])
-    return Response(json.dumps(data), 'application/json')
+    return Response(response=json.dumps(data), content_type='application/json', status=200)
 
 
 def post_process_audio(input_base64_opus_audio, command_chain):
