@@ -5,6 +5,7 @@ import base64
 import os
 import tempfile
 import shutil
+import re
 
 api = Flask(__name__)
 
@@ -39,10 +40,15 @@ def post_process_audio(input_base64_opus_audio, command_chain):
         # Convert to WAV as SOX does not handle ogg/opus encoded data.
         convert_opus_to_wav(tempdir, 'input.opus', 'input.wav')
 
+        if not is_too_low_volume(tempdir, 'input.wav'):
+            return input_base64_opus_audio
+
+        print('Low volume detected.')
+
         chain_input_file = 'input.wav'
         for num, command in enumerate(command_chain, start=1):
             output_file = 'sox_chain_' + str( num ) + '.wav'
-            sox(tempdir, chain_input_file, output_file, command)
+            sox_filter(tempdir, chain_input_file, output_file, command)
             chain_input_file = output_file
 
         # Convert back to ogg/opus.
@@ -52,6 +58,7 @@ def post_process_audio(input_base64_opus_audio, command_chain):
         processed_opus_audio = read_file(tempdir, 'output.opus')
         base64_encoded_processed_opus_audio = base64.b64encode(processed_opus_audio)
         return base64_encoded_processed_opus_audio.decode('ascii')
+
     finally:
         # delete temporary directory
         shutil.rmtree(tempdir)
@@ -61,7 +68,31 @@ def convert_opus_to_wav(directory, input_filename, output_filename):
     output_path = os.path.join(directory, output_filename)
     os.system('opusdec --force-wav %s %s' % (input_path, output_path))
 
-def sox(directory, input_filename, output_filename, sox_parameters):
+def is_too_low_volume(directory, input_filename):
+    stats = sox_stats(directory, input_filename)
+    midline_amplitude = stats['RMS amplitude']
+    # This threshold it taken out of thin air.
+    # TODO: Collect a corpus of click and non click sample stats and build a decision tree
+    # TODO: For instance using an arff-file in Weka.
+    return midline_amplitude < 0.05
+
+sox_stat_expression = re.compile('([^:]+):(.+)')
+
+def sox_stats(directory, input_filename):
+    values = {}
+    input_path = os.path.join(directory, input_filename)
+    output = os.popen('sox %s -n stat 2>&1' % (input_path)).read()
+    for line in output.splitlines():
+        match = sox_stat_expression.match(line)
+        if (match):
+            key = re.sub(r"\s+", ' ', match.group(1)).strip()
+            value = float(match.group(2).strip())
+            values[key] = value
+        else:
+            print("Non matching SOX stat line: " + line)
+    return values
+
+def sox_filter(directory, input_filename, output_filename, sox_parameters):
     input_path = os.path.join(directory, input_filename)
     output_path = os.path.join(directory, output_filename)
     os.system('sox %s %s %s' % (input_path, output_path, sox_parameters))
