@@ -20,7 +20,7 @@ def get():
     print('Incoming request with parameters ' + json.dumps(params))
     params.pop('speechoidUrl', None)
     if params['lang'] == 'eu':
-        latin_1_safe_input = params['input'].encode('latin-1', 'replace').decode('utf-8')
+        latin_1_safe_input = params['input'].encode('latin-1', 'replace').decode('latin-1')
         if latin_1_safe_input != params['input']:
             print('Warning! Information irreversible lost when converting to latin-1:\n' + latin_1_safe_input + '\n' + params['input'])
             params['input'] = latin_1_safe_input
