@@ -29,7 +29,11 @@ def get(path):
         return proxy()
 
     print(f"request = {request.method}")
-    response = requests.request(method=request.method, url=speechoid_url, params=params)
+    response = requests.request(
+        method=request.method,
+        url=speechoid_url + path,
+        params=params
+    )
     return Response(
         response.text,
         status=response.status_code,
