@@ -22,11 +22,11 @@ def get(path):
     params.pop('speechoidUrl', None)
 
     if path == '' and 'lang' in params and 'input' in params:
-        return proxy(request, speechoid_url, params)
+        return pass_through_sox(request, speechoid_url, params)
 
-    return speechoid(request, speechoid_url + path, params)
+    return to_wikispeech_server(request, speechoid_url + path, params)
 
-def proxy(request, speechoid_url, params):
+def pass_through_sox(request, speechoid_url, params):
     if params['lang'] == 'eu':
         latin_1_safe_input = params['input'].encode('latin-1', 'replace').decode('latin-1')
         if latin_1_safe_input != params['input']:
@@ -36,7 +36,8 @@ def proxy(request, speechoid_url, params):
     try:
         data = response.json()
     except:
-        return speechoid(request, speechoid_url, params)
+        # The response wasn't proper JSON so it's probably an error.
+        return to_wikispeech_server(request, speechoid_url, params)
 
     data['audio_data'] = post_process_audio(data['audio_data'], [
         # Compressor with low threshold, low attack, high ratio to normalize all audio, including potential click.
@@ -48,7 +49,7 @@ def proxy(request, speechoid_url, params):
     ])
     return Response(response=json.dumps(data), content_type='application/json', status=200)
 
-def speechoid(request, url, params):
+def to_wikispeech_server(request, url, params):
     response = requests.request(
         method=request.method,
         url=url,
