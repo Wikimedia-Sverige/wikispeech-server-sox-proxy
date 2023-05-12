@@ -15,49 +15,29 @@ def ping():
 
 @api.route('/', defaults={'path': ''}, methods=['GET', 'POST'])
 @api.route('/<path:path>')
-# @api.route('/', methods=['GET', 'POST'])
 def get(path):
     speechoid_url = request.values.get('speechoidUrl', os.getenv('SPEECHOID_URL', 'http://wikispeech-server:10001/'))
-    print("speechoid_url = " + speechoid_url)
     params = request.values.to_dict()
     print(f'Incoming request with parameters: {params}')
     params.pop('speechoidUrl', None)
 
-    print("path = " + path)
     if path == '' and 'lang' in params and 'input' in params:
-        print("Soxing")
-        return proxy()
+        return proxy(request, speechoid_url, params)
 
-    print(f"request = {request.method}")
-    response = requests.request(
-        method=request.method,
-        url=speechoid_url + path,
-        params=params
-    )
-    return Response(
-        response.text,
-        status=response.status_code,
-        content_type=response.headers['content-type'],
-    )
+    return speechoid(request, speechoid_url + path, params)
 
-def proxy():
-    speechoid_url = request.values.get('speechoidUrl', os.getenv('SPEECHOID_URL', 'http://wikispeech-server:10001/'))
-    params = dict(request.values)
+def proxy(request, speechoid_url, params):
     if params['lang'] == 'eu':
         latin_1_safe_input = params['input'].encode('latin-1', 'replace').decode('latin-1')
         if latin_1_safe_input != params['input']:
             print('Warning! Information irreversible lost when converting to latin-1:\n' + latin_1_safe_input + '\n' + params['input'])
             params['input'] = latin_1_safe_input
-    response = requests.get(url = speechoid_url, params = params)
-    print(f"ok? {response.ok}, {response.status_code}")
-    if not response.ok:
-        return response.raw.read(), response.status_code, response.headers.items()
-
+    response = requests.get(url=speechoid_url, params=params)
     try:
         data = response.json()
     except:
-        print("error from speechoid")
-        return response.text, response.status_code
+        return speechoid(request, speechoid_url, params)
+
     data['audio_data'] = post_process_audio(data['audio_data'], [
         # Compressor with low threshold, low attack, high ratio to normalize all audio, including potential click.
         #'compand 0.02,0.20 5:-60,-40,-10 -5 -90 0.1',
@@ -68,6 +48,17 @@ def proxy():
     ])
     return Response(response=json.dumps(data), content_type='application/json', status=200)
 
+def speechoid(request, url, params):
+    response = requests.request(
+        method=request.method,
+        url=url,
+        params=params
+    )
+    return Response(
+        response.text,
+        status=response.status_code,
+        content_type=response.headers['content-type'],
+    )
 
 def post_process_audio(input_base64_opus_audio, command_chain):
     # create temporary directory
