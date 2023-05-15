@@ -6,6 +6,7 @@ import os
 import tempfile
 import shutil
 import re
+from urllib.parse import urljoin
 
 api = Flask(__name__)
 
@@ -24,7 +25,8 @@ def get(path):
     if path == '' and 'lang' in params and 'input' in params:
         return pass_through_sox(request, speechoid_url, params)
 
-    return to_wikispeech_server(request, speechoid_url + path, params)
+    url = urljoin(speechoid_url, path)
+    return to_wikispeech_server(request, url, params)
 
 def pass_through_sox(request, speechoid_url, params):
     if params['lang'] == 'eu':
