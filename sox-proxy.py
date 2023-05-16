@@ -38,8 +38,9 @@ def pass_through_sox(request, speechoid_url, params):
     try:
         data = response.json()
     except:
-        # The response wasn't proper JSON so it's probably an error.
-        return to_wikispeech_server(request, speechoid_url, params)
+        # The response wasn't proper JSON so it's probably an
+        # error. Return it as it is.
+        return response.text
 
     data['audio_data'] = post_process_audio(data['audio_data'], [
         # Compressor with low threshold, low attack, high ratio to normalize all audio, including potential click.
@@ -49,7 +50,7 @@ def pass_through_sox(request, speechoid_url, params):
         # normalize audio
         'norm -0.1'
     ])
-    return Response(response=json.dumps(data), content_type='application/json', status=200)
+    return data
 
 def to_wikispeech_server(request, url, params):
     response = requests.request(
